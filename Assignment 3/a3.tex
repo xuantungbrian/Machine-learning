@@ -1,0 +1,327 @@
+% !TEX enableShellEscape = yes
+% (The above line makes atom's latex package compile with -shell-escape
+% for minted, and is just ignored by other systems.)
+\documentclass{article}
+
+\usepackage{fullpage}
+\usepackage{color}
+\usepackage{amsmath,amssymb}
+\usepackage{url}
+\usepackage{verbatim}
+\usepackage{graphicx}
+\usepackage{parskip}
+\usepackage{amssymb}
+\usepackage{hyperref}
+
+% Use one or the other of these for displaying code.
+% NOTE: If you get
+%  ! Package minted Error: You must invoke LaTeX with the -shell-escape flag.
+% and don't want to use minted, just comment out the next line
+\usepackage{minted} \BeforeBeginEnvironment{minted}{\begingroup\color{black}} \AfterEndEnvironment{minted}{\endgroup} \setminted{autogobble,breaklines,breakanywhere,linenos}
+
+\usepackage{listings}
+
+% Colours
+\definecolor{blu}{rgb}{0,0,1}
+\newcommand{\blu}[1]{{\textcolor{blu}{#1}}}
+\definecolor{gre}{rgb}{0,.5,0}
+\newcommand{\gre}[1]{\textcolor{gre}{#1}}
+\definecolor{red}{rgb}{1,0,0}
+\newcommand{\red}[1]{\textcolor{red}{#1}}
+\definecolor{pointscolour}{rgb}{0.6,0.3,0}
+
+% answer commands
+\newcommand\ans[1]{\par\gre{Answer: #1}}
+\newenvironment{answer}{\par\begingroup\color{gre}Answer: }{\endgroup}
+\let\ask\blu
+\let\update\red
+\newenvironment{asking}{\begingroup\color{blu}}{\endgroup}
+\newcommand\pts[1]{\textcolor{pointscolour}{[#1~points]}}
+
+% Math
+\def\R{\mathbb{R}}
+\def\half{\frac 1 2}
+\DeclareMathOperator*{\argmax}{arg\,max}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\newcommand{\norm}[1]{\lVert #1 \rVert}
+\newcommand{\mat}[1]{\begin{bmatrix}#1\end{bmatrix}}
+
+% LaTeX
+\newcommand{\fig}[2]{\includegraphics[width=#1\textwidth]{#2}}
+\newcommand{\centerfig}[2]{\begin{center}\includegraphics[width=#1\textwidth]{#2}\end{center}}
+
+\begin{document}
+
+\title{CPSC 340 Assignment 3 (due Friday February 17 at 11:55pm)}
+\date{}
+\maketitle
+\vspace{-6em}
+\begin{center}\red{\bf Important: Please make sure to follow the submission instructions posted on Piazza.}\end{center}
+\vspace{2em}
+
+\ask{Name(s) and Student ID(s):}
+
+\section{More Unsupervised Learning}
+\subsection{Vector Quantization}
+
+
+Discovering object groups is one motivation for clustering. Another motivation is \emph{vector quantization}, where we find a prototype point for each cluster and replace points in the cluster by their prototype. If our inputs are images, we could use vector quantization on the set of RGB pixel values as a simple image compression algorithm.
+
+Your task is to implement this simple image compression algorithm by writing a \texttt{quantizeImage} and a \texttt{deQuantizeImage} function. The \texttt{quantizeImage} function should take the name of an image file (like ``dog.png'' for the provided image) and a number $b$ as input. It should use the pixels in the image as examples and the 3 colour channels as features, and run $k$-means clustering on this data with $2^b$ clusters. The code should store the cluster means and return four arguments: the cluster assignments $y$, the means $W$, the number of rows in the image $nRows$, and the number of columns $nCols$. The \texttt{deQuantizeImage} function should take these four arguments and return a version of the image (the same size as the original) where each pixel's original colour is replaced with the nearest prototype colour.
+
+To understand why this is compression, consider the original image space. Say the image can take on the values $0,1,\ldots,254,255$ in each colour channel. Since $2^8=256$ this means we need 8 bits to represent each colour channel, for a total of 24 bits per pixel. Using our method, we are restricting each pixel to only take on one of $2^b$ colour values. In other words, we are compressing each pixel from a 24-bit colour representation to a $b$-bit colour representation by picking the $2^b$ prototype colours that are ``most representative'' given the content of the image. So, for example, if $b=6$ then we have 4x compression.
+
+\blu{\begin{enumerate}
+\item Complete the functions \texttt{quantizeImage} and \texttt{deQuantizeImage} in \texttt{vector\_quantization.py} and hand in your code.
+\item If you run \texttt{python main.py 1} it will run your compression algorithm on the included image `dog.png' using a $1$, $2$, $4$, and $6$ bit quantization per pixel (instead of the original 24 bits). Hand in the resulting images obtained with this encoding.
+\end{enumerate}}
+
+\pagebreak
+
+\section{Matrix Notation and Minimizing Quadratics}
+
+
+\subsection{Converting to Matrix/Vector/Norm Notation }
+
+Using our standard supervised learning notation ($X$, $y$, $w$)
+express the following functions in terms of vectors, matrices, and norms (there should be no summations or maximums).
+\blu{\begin{enumerate}
+\item $\sum_{i=1}^n  |w^Tx_i - y_i| + \lambda \sum_{j=1}^{d} |w_j|$.
+\item $\sum_{i=1}^n v_i (w^Tx_i - y_i)^2 + \sum_{j=1}^{d} \lambda_j w_j^2$.
+\item $\left(\max_{i \in \{1,2,\dots,n\}} |w^Tx_i - y_i|\right)^2 +  \half\sum_{j=1}^{d} \lambda_j|w_j|$.
+\end{enumerate}}
+
+
+You can use $V$ to denote a diagonal matrix that has the (non-negative) ``weights'' $v_i$ along the diagonal. The value $\lambda$ (the ``regularization parameter'') is a non-negative scalar. You can use $\Lambda$ as a diagonal matrix that has the (non-negative) $\lambda_j$ values along the diagonal.
+
+\pagebreak
+
+\subsection{Minimizing Quadratic Functions as Linear Systems } \label{sec:lin-sys}
+
+Write finding a minimizer $w$ of the functions below as a system of linear equations (using vector/matrix notation and simplifying as much as possible). Note that all the functions below are convex  so finding a $w$ with $\nabla f(w) = 0$ is sufficient to minimize the functions (but show your work in getting to this point).
+\blu{\begin{enumerate}
+\item $f(w) = \frac{1}{2}\norm{w-u}^2$ (projection of $u$ onto real space).
+\item $f(w)= \frac{1}{2}\sum_{i=1}^n v_i (w^Tx_i - y_i)^2 + \lambda w^Tu$ (weighted and tilted least squares).
+\item $f(w) = \frac{1}{2}\norm{Xw - y}^2 + \frac{\lambda}{2}\norm{w-w^0}^2$ (least squares shrunk towards non-zero $w^0$).
+\end{enumerate}}
+
+Above we assume that $u$ and $w^0$ are $d$-by-$1$ vectors and that $v$ is a $n$-by-$1$ vector. You can use $V$ as a diagonal matrix containing the $v_i$ values along the diagonal.
+
+Hint: Once you convert to vector/matrix notation, you can use the results from class to quickly compute these quantities term-wise.
+As a sanity check for your derivation, make sure that your results have the right dimensions. In order to make the dimensions match you may need to introduce an identity matrix. For example, $X^TXw + \lambda w$ can be re-written as $(X^TX + \lambda I)w$.
+
+\pagebreak
+
+\subsection{Convex Functions}
+
+Recall that convex loss functions are typically easier to minimize than non-convex functions, so it's important to be able to identify whether a function is convex.
+
+\blu{Show that the following functions are convex}:
+
+\begin{enumerate}
+\item $f(w) = \half w^2 + w^{-1}$ with $w > 0$.
+\item $f(w) = \max_i w_i$ with $w \in \R^n$ (maximum).
+\item $f(y) = \max(0,1-t\cdot y)$ with $y\in \R$ and $t\in\{-1,+1\}$ (hinge loss).
+\item $f(w) = \norm{Xw-y}^2 + \lambda\norm{w}_1$ with $w \in \R^d, \lambda \geq 0$ (L1-regularized least squares).
+\item $f(w) = \sum_{i=1}^n \log(1+\exp(-y_iw^Tx_i)) $ with $w \in \R^d$ (logistic regression).
+\end{enumerate}
+
+
+
+Hint for 2.3.5: this function may seem non-convex since it contains $\log(z)$ and $\log$ is concave, but there is a flaw in that reasoning: for example $\log(\exp(z))=z$ is convex despite containing a $\log$. To show convexity, it may be helpful to show that $\log(1+\exp(z))$ is convex, which can be done by computing the second derivative. It may simplify matters to note that $\frac{\exp(z)}{1+\exp(z)} = \frac{1}{1+\exp(-z)}$.
+
+\pagebreak
+\section{Robust Regression and Gradient Descent }
+
+If you run \verb|python main.py 3|, it will load a one-dimensional regression
+dataset that has a non-trivial number of `outlier' data points.
+These points do not fit the general trend of the rest of the data,
+and pull the least squares model away from the main downward trend that most data points exhibit:
+\centerfig{.7}{./figs/least_squares_outliers.pdf}
+
+Note: we are fitting the regression without an intercept here, just for simplicity of the homework question.
+In reality one would rarely do this. But here it's OK because the ``true'' line
+passes through the origin (by design). In Q\ref{biasvar} we'll address this explicitly.
+
+A coding note:
+when we're doing math, we always treat $y$ and $w$ as column vectors,
+i.e.\ if we're thinking of them as matrices, then shape $n \times 1$ or $d \times 1$, respectively.
+This is also what you'd usually do when coding things in, say, Matlab.
+It is \emph{not} what's usually done in Python machine learning code, though:
+we usually have \verb|y.shape == (n,)|, i.e.\ a one-dimensional array.
+Mathematically, these are the same thing, but if you mix between the two,
+you can really easily get confusing answers:
+if you add something of shape \texttt{(n, 1)} to something of shape \texttt{(n,)},
+then the NumPy broadcasting rules give you something of shape \texttt{(n, n)}.
+This is a very unfortunate consequence of the way the broadcasting rules work.
+If you stick to either one, you generally don't have to worry about it;
+\textbf{we're assuming shape \texttt{(n,)} here}.
+Note that you can
+ensure you have something of shape \texttt{(n,)} with the \texttt{utils.ensure\_1d} helper, which basically just uses
+\texttt{two\_d\_array.squeeze(1)}
+(which checks that the axis at index 1, the second one, is length 1 and then removes it).
+You can go from \texttt{(n,)} to \texttt{(n, 1)} with, for instance, \texttt{one\_d\_array[:, np.newaxis]}
+(which says ``give me the whole first axis, then add another axis of length 1 in the second position'').
+
+\pagebreak
+
+\subsection{Weighted Least Squares in One Dimension }
+
+One of the most common variations on least squares is \emph{weighted} least squares. In this formulation, we have a weight $v_i$ for every training example. To fit the model, we minimize the weighted squared error,
+\[
+f(w) =  \frac{1}{2}\sum_{i=1}^n v_i(w^Tx_i - y_i)^2.
+\]
+In this formulation, the model focuses on making the error small for examples $i$ where $v_i$ is high. Similarly, if $v_i$ is low then the model allows a larger error. Note: these weights $v_i$ (one per training example) are completely different from the model parameters $w_j$ (one per feature), which, confusingly, we sometimes also call ``weights.'' The $v_i$ are sometimes called \emph{sample weights} or \emph{instance weights} to help distinguish them.
+
+Complete the model class, \texttt{WeightedLeastSquares} (inside \texttt{linear\_models.py}), to implement this model.
+(Note that Q\ref{sec:lin-sys}. asks you to show how a similar formulation can be solved as a linear system.)
+Apply this model to the data containing outliers, setting $v = 1$ for the first
+$400$ data points and $v = 0.1$ for the last $100$ data points (which are the outliers).
+\ask{Hand in your code and the updated plot}.
+
+\pagebreak
+
+\subsection{Smooth Approximation to the L1-Norm }\label{sec:huber}
+
+Unfortunately, we typically do not know the identities of the outliers. In situations where we suspect that there are outliers, but we do not know which examples are outliers, it makes sense to use a loss function that is more robust to outliers. In class, we discussed using the Huber loss,
+\[
+f(w) = \sum_{i=1}^n h(w^Tx_i  -y_i),
+\]
+where
+\[
+h(r_i) =
+\begin{cases}
+\half r_i^2 & \text{for $|r_i| \leq \epsilon$}\\
+\epsilon(|r_i| - \half \epsilon) & \text{otherwise}
+\end{cases}.
+\]
+This is less sensitive to outliers than least squares, although it can no longer be minimized by solving a linear system. \blu{Derive
+ the gradient $\nabla f$ of this function with respect to $w$. You should show your work but you do not have to express the final result in matrix notation.}
+ Hint: you can start by computing the derivative of $h$ with respect to $r_i$ and then get the gradient using the chain rule. You can use sgn$(r_i)$ as a function that returns $1$ if $r_i$ is positive and $-1$ if it is negative.
+
+\pagebreak
+
+\subsection{Gradient Descent: Understanding the Code }
+
+Recall gradient descent, a derivative-based optimization algorithm that uses gradients to navigate the parameter space until a locally optimal parameter is found. In \texttt{optimizers.py}, you will see our implementation of gradient descent, taking the form of a class named \texttt{GradientDescent}. This class has a similar design pattern as PyTorch, a popular differentiable programming and optimization library. One step of gradient descent is defined as
+\[
+	w^{t+1} = w^t - \alpha^t \nabla_w f(w^t)
+.\]
+
+Look at the methods named \texttt{get\_learning\_rate\_and\_step()} and \texttt{break\_yes()}, \ask{and answer each of these questions, one sentence per answer:}
+\begin{enumerate}
+	\item Which variable is equivalent to $\alpha^t$, the step size at iteration $t$?
+	\item Which variable is equivalent to $\nabla_w f(w^t)$ the current value of the gradient vector?
+	\item Which variable is equivalent to $w^t$, the current value of the parameters?
+	\item What is the method \texttt{break\_yes()} doing?
+\end{enumerate}
+
+\pagebreak
+
+\subsection{Robust Regression}
+
+The class \texttt{LinearModel} is like \texttt{LeastSquares}, except that it fits the least squares model using a gradient descent method. If you run \verb|python main.py 3.4| you'll see it produces the same fit as we obtained using the normal equations.
+
+The typical input to a gradient method is a function that, given $w$, returns $f(w)$ and $\nabla f(w)$. See \texttt{fun\_obj.py} for some examples. Note that the \texttt{fit} function of \texttt{LinearModel} also has a numerical check that the gradient code is approximately correct, since implementing gradients is often error-prone.\footnote{Sometimes the numerical gradient checker itself can be wrong. See CPSC 303 for a lot more on numerical differentiation.}
+
+\subsubsection{Implementing the Huber Loss}
+An advantage of gradient-based strategies is that they are able to solve
+problems that do not have closed-form solutions, such as the formulation from section \ref{sec:huber}. The class \texttt{LinearModel} has most of the implementation of a gradient-based strategy for fitting the robust regression model under the Huber loss.
+
+Optimizing robust regression parameters is the matter of implementing a function object and using an optimizer to minimize the function object. The only part missing is the function and gradient calculation inside \texttt{fun\_obj.py}. \ask{Inside \texttt{fun\_obj.py}, complete \texttt{RobustRegressionLoss} to implement the objective function and gradient function based on the Huber loss from section \ref{sec:huber}. Hand in your code and a regression plot using this robust regression approach with $\epsilon=1$.}
+
+
+\clearpage
+
+\section{Linear and Nonlinear Regression}
+
+In class we discussed fitting a linear regression model by minimizing the squared error.
+In this question, you will start with a data set where least squares performs poorly.
+You will then explore how adding a bias variable and using nonlinear (polynomial) bases can drastically improve the performance.
+You will also explore how the complexity of a basis affects both the training error and the validation error.
+
+If you run \verb|python main.py 4|, it will:
+\begin{enumerate}
+\item Load a one-dimensional regression dataset.
+\item Fit a least-squares linear regression model.
+\item Report the training error.
+\item Report the validation error.
+\item Draw a figure showing the training data and what the linear model looks like.
+\end{enumerate}
+Unfortunately, this is an awful model of the data. The average squared training error on the data set is over 28000
+(as is the validation error), and the figure produced by the demo confirms that the predictions are usually nowhere near
+ the training data:
+\centerfig{.5}{./figs/least_squares_no_bias.pdf}
+
+\pagebreak
+
+\subsection{Linear Regression with Bias Variable}\label{biasvar}
+
+The $y$-intercept of this data is clearly not zero (it looks like it's closer to $200$),
+so we should expect to improve performance by adding a \emph{bias} variable, so that our model is
+\[
+y_i = w^Tx_i + w_0
+\]
+instead of
+\[
+y_i = w^Tx_i.
+\]
+\ask{In file \texttt{linear\string_models.py}, complete the class \texttt{LeastSquaresBias},
+that has the same input/model/predict format as the \texttt{LeastSquares} class,
+but that adds a \emph{bias} variable $w_0$. Hand in your new class, the updated plot,
+and the updated training/validation error.}
+
+Hint: recall that adding a bias $w_0$ is equivalent to adding a column of ones to the matrix $X$. Don't forget that you need to do the same transformation in the \texttt{predict} function.
+
+\pagebreak
+
+\subsection{Linear Regression with Polynomial Basis}
+
+Adding a bias variable improves the prediction substantially, but the model is still problematic because the target seems to be a \emph{non-linear} function of the input.
+Complete \texttt{LeastSquaresPoly} class, that takes a data vector $x$ (i.e., assuming we only have one feature) and the polynomial order $p$. The function should perform a least squares fit based on a matrix $Z$ where each of its rows contains the values $(x_{i})^j$ for $j=0$ up to $p$. E.g., \texttt{LeastSquaresPoly.fit(x,y)}  with $p = 3$ should form the matrix
+\[
+Z =
+\left[\begin{array}{cccc}
+1 & x_1 & (x_1)^2 & (x_1)^3\\
+1 & x_2 & (x_2)^2 & (x_2)^3\\
+\vdots\\
+1 & x_n & (x_n)^2 & (x_n)^3\\
+\end{array}
+\right],
+\]
+and fit a least squares model based on it.
+\ask{Submit your code, and a plot showing training and validation error curves for the following values of $p$: $0,1,2,3,4,5,10,20,30,50,75,100$. Clearly label your axes, and use a logarithmic scale for $y$ by \texttt{plt.yscale("log")} or similar, so that we can still see what's going on if there are a few extremely large errors. Explain the effect of $p$ on the training error and on the validation error.}
+
+Note: large values of $p$ may cause numerical instability. Your solution may look different from others' even with the same code depending on the OS and other factors. As long as your training and validation error curves behave as expected, you will not be penalized.
+
+Note: you should write the code yourself; don't use a library like sklearn's \texttt{PolynomialFeatures}.
+
+Note: in addition to the error curves, the code also produces a plot of the fits themselves. This is for your information; you don't have to submit it.
+
+\pagebreak
+
+\section{Very-Short Answer Questions}
+
+
+
+\begin{enumerate}
+\item Describe a dataset with $k$ clusters where $k$-means cannot find the true clusters.
+\item Why do we need random restarts for $k$-means but not for density-based clustering?
+\item{Why is it not a good idea to create an ensemble out of multiple $k$-means runs with random restarts and, for each example, output the mode of the label assignments (voting)?}
+\item For each outlier detection method below, list an example method and a problem with identifying outliers using this method:
+\begin{itemize}
+\item Model-based outlier detection.
+\item Graphical-based outlier detection.
+\item Supervised outlier detection.
+\end{itemize}
+\item Why do we minimize $\frac{1}{2}\sum_{i=1} ^n (wx_i-y_i)^2$ instead of the actual mean squared error $\frac{1}{n}\sum_{i=1}^n (wx_i-y_i)^2$ in (1D) least squares?
+\item Give an example of a feature matrix $X$ for which the least squares problem \emph{cannot} be solved as $w = (X^\top X)^{-1}(X^\top y)$.
+\item Why do we typically add a column of $1$ values to $X$ when we do linear regression? Should we do this if we're using decision trees?
+\item When should we consider using gradient descent to approximate the solution to the least squares problem instead of exactly solving it with the closed form solution?
+\item If a function is convex, what does that say about stationary points of the function? Does convexity imply that a stationary points exists?
+\item For robust regression based on the L1-norm error, why can't we just set the gradient to 0 and solve a linear system? In this setting, why we would want to use a smooth approximation to the absolute value?
+\item What is the problem with having too small of a learning rate in gradient descent?
+\item What is the problem with having too large of a learning rate in gradient descent?
+\end{enumerate}
+
+\end{document}
